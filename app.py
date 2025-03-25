@@ -18,7 +18,7 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-def ML_model(lat1, lon1, lat2, lon2):
+def ml_model(lat1, lon1, lat2, lon2):
     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
     dlon = lon2 - lon1
@@ -28,8 +28,8 @@ def ML_model(lat1, lon1, lat2, lon2):
     return c * r
 
 # Load the ML model (Haversine function) from the pickle file
-with open('ML_model.pkl', 'rb') as file:
-    ml_model = pickle.load(file)
+# with open('ML_model.pkl', 'rb') as file:
+#     ml_model = pickle.load(file)
 
 # Objective function for dual annealing
 def evaluate(new_service_center, customers_df, service_centers_df):
