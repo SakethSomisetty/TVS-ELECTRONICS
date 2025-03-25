@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TVS Electronics Dashboard - Optimal Location Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+            background-color: #f9f9f9;
+        }
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .dashboard-header h1 {
+            font-size: 2.5em;
+            color: #333;
+        }
+        .dashboard-header h3 {
+            font-size: 1.5em;
+            color: #666;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .form-container input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .form-container input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        .results-container {
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-header">
+    <h1>TVS Electronics Dashboard</h1>
+    <h3>Optimal Service Center Location Finder</h3>
+</div>
+
+<!-- First Application: Using Customer Bounds -->
+<div class="form-container">
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <label for="customer_file">Upload Customer Data:</label>
+        <input type="file" name="customer_file" id="customer_file" required>
+
+        <label for="service_center_file">Upload Service Center Data:</label>
+        <input type="file" name="service_center_file" id="service_center_file" required>
+
+        <input type="submit" value="Find Optimal Location">
+    </form>
+</div>
+
+{% if optimal_latitude and optimal_longitude %}
+<div class="results-container">
+    <h3>Results (Using Customer Bounds)</h3>
+    <p>Optimal Service Center Latitude: {{ optimal_latitude }}</p>
+    <p>Optimal Service Center Longitude: {{ optimal_longitude }}</p>
+    <p>Total Distance Before: {{ total_distance_before | round(2) }}</p>
+    <p>Total Distance After: {{ total_distance_after | round(2) }}</p>
+    <p>Number of Customers Benefited: {{ num_beneficial_customers }}</p>
+</div>
+{% endif %}
+
+<!-- Second Application: Using Manual Latitude/Longitude Bounds -->
+<div class="dashboard-header">
+    <h3>Find Optimal Service Center Location Using Manual Latitude/Longitude Bounds</h3>
+</div>
+
+<div class="form-container">
+    <form action="/upload_custom_bounds" method="POST" enctype="multipart/form-data">
+        <label for="customer_file">Upload Customer Data:</label>
+        <input type="file" name="customer_file" id="customer_file" required>
+
+        <label for="service_center_file">Upload Service Center Data:</label>
+        <input type="file" name="service_center_file" id="service_center_file" required>
+
+        <label for="lat_lower">Latitude Lower Bound:</label>
+        <input type="text" name="lat_lower" required>
+
+        <label for="lat_upper">Latitude Upper Bound:</label>
+        <input type="text" name="lat_upper" required>
+
+        <label for="lon_lower">Longitude Lower Bound:</label>
+        <input type="text" name="lon_lower" required>
+
+        <label for="lon_upper">Longitude Upper Bound:</label>
+        <input type="text" name="lon_upper" required>
+
+        <input type="submit" value="Find Optimal Location (Manual Bounds)">
+    </form>
+</div>
+
+{% if manual_optimal_latitude and manual_optimal_longitude %}
+<div class="results-container">
+    <h3>Results (Using Manual Bounds)</h3>
+    <p>Optimal Service Center Latitude: {{ manual_optimal_latitude }}</p>
+    <p>Optimal Service Center Longitude: {{ manual_optimal_longitude }}</p>
+    <p>Total Distance Before: {{ manual_total_distance_before | round(2) }}</p>
+    <p>Total Distance After: {{ manual_total_distance_after | round(2) }}</p>
+    <p>Number of Customers Benefited: {{ manual_beneficial_customers }}</p>
+</div>
+{% endif %}
+
+<!-- Third Application: Input Service Center Coordinates -->
+<div class="dashboard-header">
+    <h3>Calculate Total Distance with Input Service Center Coordinates</h3>
+</div>
+
+<div class="form-container">
+    <form action="/calculate_distance" method="POST" enctype="multipart/form-data">
+        <label for="customer_file">Upload Customer Data:</label>
+        <input type="file" name="customer_file" id="customer_file" required>
+
+        <label for="service_center_file">Upload Service Center Data:</label>
+        <input type="file" name="service_center_file" id="service_center_file" required>
+
+        <label for="new_lat">New Service Center Latitude:</label>
+        <input type="text" name="new_lat" required>
+
+        <label for="new_lon">New Service Center Longitude:</label>
+        <input type="text" name="new_lon" required>
+
+        <input type="submit" value="Calculate Total Distance">
+    </form>
+</div>
+
+{% if new_latitude and new_longitude %}
+<div class="results-container">
+    <h3>Results (Using Input Lat/Lon)</h3>
+    <p>Input Latitude: {{ new_latitude }}</p>
+    <p>Input Longitude: {{ new_longitude }}</p>
+    <p>Total Distance Before: {{ total_distance_before_new | round(2) }}</p>
+    <p>Total Distance After: {{ total_distance_after_new | round(2) }}</p>
+    <p>Number of Customers Benefited: {{ num_beneficial_customers_new }}</p>
+</div>
+{% endif %}
+
+<!-- Fourth Application: Nearest Service Center Finder -->
+<div class="dashboard-header">
+    <h3>Find Nearest Service Center to Customers</h3>
+</div>
+
+<div class="form-container">
+    <form action="/find_nearest_service_center" method="POST" enctype="multipart/form-data">
+        <label for="customer_file">Upload Customer Data:</label>
+        <input type="file" name="customer_file" id="customer_file" required>
+
+        <label for="service_center_file">Upload Service Center Data:</label>
+        <input type="file" name="service_center_file" id="service_center_file" required>
+
+        <input type="submit" value="Find Nearest Service Center">
+    </form>
+</div>
+
+{% if nearest_service_centers %}
+<div class="results-container">
+    <h3>Nearest Service Centers</h3>
+    <ul>
+        {% for customer, center in nearest_service_centers %}
+            <li>Customer {{ customer }} - Nearest Service Center: {{ center }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- Results Table for Nearest Service Center Application -->
+{% if results %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Customer Address</th>
+                    <th>Customer eLoc</th>
+                    <th>Nearest Service Center eLoc</th>
+                    <th>Nearest Service Center Address</th>
+                    <th>Distance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                    <tr>
+                        <td>{{ result.customer_address }}</td>
+                        <td>{{ result.customer_eloc }}</td>
+                        <td>{{ result.nearest_service_center_eloc }}</td>
+                        <td>{{ result.nearest_service_center_address }}</td>
+                        <td>{{ result.distance | round(2) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+{% else %}
+    <p>No results to display.</p>
+{% endif %}
+
+</body>
+</html>
