@@ -18,14 +18,61 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# def ml_model(lat1, lon1, lat2, lon2):
+#     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+#     dlat = lat2 - lat1
+#     dlon = lon2 - lon1
+#     a = np.sin(dlat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2)**2
+#     c = 2 * np.arcsin(np.sqrt(a))
+#     r = 6371  # Earth radius in kilometers
+#     return c * r
+
 def ml_model(lat1, lon1, lat2, lon2):
+    # Convert latitude and longitude from degrees to radians
     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+
+    # Haversine formula
     dlat = lat2 - lat1
     dlon = lon2 - lon1
     a = np.sin(dlat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2)**2
     c = 2 * np.arcsin(np.sqrt(a))
-    r = 6371  # Earth radius in kilometers
-    return c * r
+    r = 6371  # Radius of Earth in kilometers
+    base_distance = c * r
+
+    # Apply distance correction based on the range
+    corrected_distance = apply_correction(base_distance)
+    return corrected_distance
+
+def apply_correction(distance):
+    """
+    Applies a correction to the Haversine distance based on predefined ranges.
+    The correction is added as a percentage of the original Haversine distance.
+    """
+    if distance <= 0.5:
+        # 0 - 500 meters -> 2-5% correction
+        correction_factor = 0.05
+    elif 0.5 < distance <= 1:
+        # 500 meters - 1 km -> 5-7% correction
+        correction_factor = 0.07
+    elif 1 < distance <= 3:
+        # 1 km - 3 km -> 7-10% correction
+        correction_factor = 0.10
+    elif 3 < distance <= 5:
+        # 3 km - 5 km -> 10-12% correction
+        correction_factor = 0.12
+    elif 5 < distance <= 10:
+        # 5 km - 10 km -> 12-15% correction
+        correction_factor = 0.15
+    elif 10 < distance <= 20:
+        # 10 km - 20 km -> 15-18% correction
+        correction_factor = 0.18
+    else:
+        # Greater than 20 km -> 18-20% correction
+        correction_factor = 0.20
+
+    # Apply the correction as a percentage of the base distance
+    corrected_distance = distance * (1 + correction_factor)
+    return corrected_distance
 
 # Load the ML model (Haversine function) from the pickle file
 # with open('ML_model.pkl', 'rb') as file:
