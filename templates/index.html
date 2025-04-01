@@ -86,8 +86,8 @@
     <h3>Results (Using Customer Bounds)</h3>
     <p>Optimal Service Center Latitude: {{ optimal_latitude }}</p>
     <p>Optimal Service Center Longitude: {{ optimal_longitude }}</p>
-    <p>Total Distance Before: {{ total_distance_before | round(2) }}</p>
-    <p>Total Distance After: {{ total_distance_after | round(2) }}</p>
+    <p>Total Distance Before (in km's) : {{ total_distance_before | round(2) }}</p>
+    <p>Total Distance After (in km's) : {{ total_distance_after | round(2) }}</p>
     <p>Number of Customers Benefited: {{ num_beneficial_customers }}</p>
 </div>
 {% endif %}
@@ -126,8 +126,8 @@
     <h3>Results (Using Manual Bounds)</h3>
     <p>Optimal Service Center Latitude: {{ manual_optimal_latitude }}</p>
     <p>Optimal Service Center Longitude: {{ manual_optimal_longitude }}</p>
-    <p>Total Distance Before: {{ manual_total_distance_before | round(2) }}</p>
-    <p>Total Distance After: {{ manual_total_distance_after | round(2) }}</p>
+    <p>Total Distance Before (in km's) : {{ manual_total_distance_before | round(2) }}</p>
+    <p>Total Distance After (in km's) : {{ manual_total_distance_after | round(2) }}</p>
     <p>Number of Customers Benefited: {{ manual_beneficial_customers }}</p>
 </div>
 {% endif %}
@@ -160,8 +160,8 @@
     <h3>Results (Using Input Lat/Lon)</h3>
     <p>Input Latitude: {{ new_latitude }}</p>
     <p>Input Longitude: {{ new_longitude }}</p>
-    <p>Total Distance Before: {{ total_distance_before_new | round(2) }}</p>
-    <p>Total Distance After: {{ total_distance_after_new | round(2) }}</p>
+    <p>Total Distance Before (in km's) : {{ total_distance_before_new | round(2) }}</p>
+    <p>Total Distance After (in km's) : {{ total_distance_after_new | round(2) }}</p>
     <p>Number of Customers Benefited: {{ num_beneficial_customers_new }}</p>
 </div>
 {% endif %}
@@ -203,7 +203,7 @@
                     <th>Customer eLoc</th>
                     <th>Nearest Service Center eLoc</th>
                     <th>Nearest Service Center Address</th>
-                    <th>Distance</th>
+                    <th>Distance (in km's) </th>
                 </tr>
             </thead>
             <tbody>
@@ -213,13 +213,69 @@
                         <td>{{ result.customer_eloc }}</td>
                         <td>{{ result.nearest_service_center_eloc }}</td>
                         <td>{{ result.nearest_service_center_address }}</td>
-                        <td>{{ result.distance | round(2) }}</td>
+                        <td>{{ (result.distance / 1000) | round(2) }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
+
+        <!-- Download Button -->
+        <form action="{{ url_for('download_results') }}" method="get">
+            <button type="submit">Download Results as Excel</button>
+        </form>
 {% else %}
     <p>No results to display.</p>
+{% endif %}
+
+<!-- Nearest Service Center Finder (ML Model) -->
+<div class="dashboard-header">
+    <h3>Find Nearest Service Center to Customers (ML Model)</h3>
+</div>
+
+<div class="form-container">
+    <form action="/find_nearest_service_center_ml" method="POST" enctype="multipart/form-data">
+        <label for="ml_customer_file">Upload Customer Data:</label>
+        <input type="file" name="ml_customer_file" id="ml_customer_file" required>
+
+        <label for="ml_service_center_file">Upload Service Center Data:</label>
+        <input type="file" name="ml_service_center_file" id="ml_service_center_file" required>
+
+        <input type="submit" value="Find Nearest Service Center">
+    </form>
+</div>
+
+{% if ml_results %}
+<div class="results-container">
+    <h3>Nearest Service Centers (ML Model)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Customer Address</th>
+                <th>Customer Latitude</th>
+                <th>Customer Longitude</th>
+                <th>Nearest Service Center Latitude</th>
+                <th>Nearest Service Center Longitude</th>
+                <th>Nearest Service Center Address (ML Model)</th>
+                <th>Distance (in km's) using ML Model</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in ml_results %}
+                <tr>
+                    <td>{{ result.customer_address }}</td>
+                    <td>{{ result.customer_latitude }}</td>
+                    <td>{{ result.customer_longitude }}</td>
+                    <td>{{ result.nearest_service_center_latitude }}</td>
+                    <td>{{ result.nearest_service_center_longitude }}</td>
+                    <td>{{ result.nearest_service_center_address_using_ml }}</td>
+                    <td>{{ (result.distance_using_ml) | round(2) }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <p>No ML results to display.</p>
 {% endif %}
 
 </body>

@@ -224,6 +224,8 @@ def calculate_distance():
                            total_distance_before_new=total_existing_distance,
                            num_beneficial_customers_new=num_benefited)
 
+global_results = []  # Store results globally
+
 # Route to calculate the nearest service centers using Mappls API
 @app.route('/find_nearest_service_center', methods=['POST'])
 def calculate_nearest_centers():
@@ -265,7 +267,46 @@ def calculate_nearest_centers():
             'distance': nearest_distance
         })
     
+    # global_results = results  # Store results globally
+    global global_results  
+    global_results.clear()  # Clear old results before adding new ones
+    global_results.extend(results)  # Update with new results
+
     return render_template('index.html', results=results)
+
+@app.route('/download-results')
+def download_results():
+    global global_results
+    if not global_results:
+        return "No results available for download", 400
+    
+    # Convert results to DataFrame
+    df = pd.DataFrame(global_results)
+
+    # Rename columns for better readability
+    df = df.rename(columns={
+        "customer_address": "Customer Address",
+        "customer_eloc": "Customer eLoc",
+        "nearest_service_center_eloc": "Nearest Service Center eLoc",
+        "nearest_service_center_address": "Nearest Service Center Address",
+        "distance": "Distance (km)"
+    })
+
+    # Convert distance from meters to kilometers
+    df["Distance (km)"] = df["Distance (km)"] / 1000
+
+    # Convert DataFrame to Excel
+    excel_file = "nearest_service_centers.xlsx"
+    df.to_excel(excel_file, index=False, engine='openpyxl')
+
+    # Read the file and send as response
+    with open(excel_file, "rb") as f:
+        data = f.read()
+
+    response = Response(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response.headers["Content-Disposition"] = f"attachment; filename={excel_file}"
+
+    return response
 
 # Mappls API functions for eLoc retrieval and distance calculation
 def get_eloc(address_list, access_token):
@@ -342,6 +383,54 @@ def find_nearest_service_center(distance_matrix, customer_count, service_center_
         nearest_centers.append((nearest_service_center, customer_distances[nearest_service_center]))
     
     return nearest_centers
+
+# Route to calculate the nearest service centers using ML model (without API)
+@app.route('/find_nearest_service_center_ml', methods=['POST'])
+def find_nearest_center_ml():
+    ml_customer_file = request.files['ml_customer_file']
+    ml_service_center_file = request.files['ml_service_center_file']
+    
+    # Save uploaded files
+    ml_customer_filepath = os.path.join(UPLOAD_FOLDER, secure_filename(ml_customer_file.filename))
+    ml_service_center_filepath = os.path.join(UPLOAD_FOLDER, secure_filename(ml_service_center_file.filename))
+    ml_customer_file.save(ml_customer_filepath)
+    ml_service_center_file.save(ml_service_center_filepath)
+    
+    # Load customer and service center data
+    ml_customer_df = pd.read_excel(ml_customer_filepath)
+    ml_service_center_df = pd.read_excel(ml_service_center_filepath)
+    
+    ml_customer_addresses = ml_customer_df['addresses'].tolist()
+    ml_customer_latitudes = ml_customer_df['latitude'].tolist()
+    ml_customer_longitudes = ml_customer_df['longitude'].tolist()
+    
+    ml_service_center_addresses = ml_service_center_df['addresses'].tolist()
+    ml_service_center_latitudes = ml_service_center_df['latitude'].tolist()
+    ml_service_center_longitudes = ml_service_center_df['longitude'].tolist()
+    
+    ml_service_center_results = []
+    for i, (cust_lat, cust_lon) in enumerate(zip(ml_customer_latitudes, ml_customer_longitudes)):
+        min_distance = float('inf')
+        nearest_service_center_idx = -1
+        
+        for j, (sc_lat, sc_lon) in enumerate(zip(ml_service_center_latitudes, ml_service_center_longitudes)):
+            distance = ml_model(cust_lat, cust_lon, sc_lat, sc_lon)
+            if distance < min_distance:
+                min_distance = distance
+                nearest_service_center_idx = j
+        
+        ml_service_center_results.append({
+            'customer_address': ml_customer_addresses[i],
+            'customer_latitude': cust_lat,
+            'customer_longitude': cust_lon,
+            'nearest_service_center_address_using_ml': ml_service_center_addresses[nearest_service_center_idx],
+            'nearest_service_center_latitude': ml_service_center_latitudes[nearest_service_center_idx],
+            'nearest_service_center_longitude': ml_service_center_longitudes[nearest_service_center_idx],
+            'distance_using_ml': min_distance
+        })
+    
+    return render_template('index.html', ml_results=ml_service_center_results)
+
 
 # Main entry point
 if __name__ == '__main__':
