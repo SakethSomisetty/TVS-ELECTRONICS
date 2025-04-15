@@ -88,8 +88,20 @@
     <p>Optimal Service Center Longitude: {{ optimal_longitude }}</p>
     <p>Total Distance Before (in km's) : {{ total_distance_before | round(2) }}</p>
     <p>Total Distance After (in km's) : {{ total_distance_after | round(2) }}</p>
+    <p>Total number of customers: {{ total_customers_new }}</p>
     <p>Number of Customers Benefited: {{ num_beneficial_customers }}</p>
 </div>
+<!-- Add this to display the generated plot -->
+<div class="plot-container">
+    <h3>Service Center Allocation Map</h3>
+    <img src="{{ url_for('static', filename=plot_filename) }}" alt="Plot of Service Centers" style="max-width: 100%; border: 1px solid #ccc;">
+</div>
+<!-- ✅ Download Button -->
+{% if download_link %}
+<div class="download-container" style="margin-top: 20px;">
+    <a href="{{ url_for('static', filename=download_link) }}" download class="btn btn-primary">📥 Download Combined Service Center File</a>
+</div>
+{% endif %}
 {% endif %}
 
 <!-- Second Application: Using Manual Latitude/Longitude Bounds -->
@@ -128,8 +140,20 @@
     <p>Optimal Service Center Longitude: {{ manual_optimal_longitude }}</p>
     <p>Total Distance Before (in km's) : {{ manual_total_distance_before | round(2) }}</p>
     <p>Total Distance After (in km's) : {{ manual_total_distance_after | round(2) }}</p>
+    <p>Total number of customers: {{ total_customers_new1 }}</p>
     <p>Number of Customers Benefited: {{ manual_beneficial_customers }}</p>
 </div>
+
+<div class="plot-container">
+    <h3>Service Center Allocation Map (Custom Bounds)</h3>
+    <img src="{{ url_for('static', filename=manual_plot_filename) }}" alt="Plot of Custom Optimized Center">
+</div>
+<!-- ✅ Download Button -->
+{% if manual_download_link %}
+<div class="download-container" style="margin-top: 20px;">
+    <a href="{{ url_for('static', filename=manual_download_link) }}" download class="btn btn-primary">📥 Download Combined Service Center File</a>
+</div>
+{% endif %}
 {% endif %}
 
 <!-- Third Application: Input Service Center Coordinates -->
@@ -162,12 +186,17 @@
     <p>Input Longitude: {{ new_longitude }}</p>
     <p>Total Distance Before (in km's) : {{ total_distance_before_new | round(2) }}</p>
     <p>Total Distance After (in km's) : {{ total_distance_after_new | round(2) }}</p>
+    <p>Total number of customers: {{ total_customers_new2 }}</p>
     <p>Number of Customers Benefited: {{ num_beneficial_customers_new }}</p>
+</div>
+<div class="plot-container">
+    <h3>Service Center Allocation Map (Manual Entry)</h3>
+    <img src="{{ url_for('static', filename=new_plot_filename) }}" alt="Plot for Manual Entry">
 </div>
 {% endif %}
 
 <!-- Fourth Application: Nearest Service Center Finder -->
-<div class="dashboard-header">
+<!-- <div class="dashboard-header">
     <h3>Find Nearest Service Center to Customers</h3>
 </div>
 
@@ -192,10 +221,10 @@
         {% endfor %}
     </ul>
 </div>
-{% endif %}
+{% endif %} -->
 
 <!-- Results Table for Nearest Service Center Application -->
-{% if results %}
+<!-- {% if results %}
         <table>
             <thead>
                 <tr>
@@ -217,18 +246,18 @@
                     </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table> -->
 
         <!-- Download Button -->
-        <form action="{{ url_for('download_results') }}" method="get">
+        <!-- <form action="{{ url_for('download_results') }}" method="get">
             <button type="submit">Download Results as Excel</button>
         </form>
 {% else %}
     <p>No results to display.</p>
-{% endif %}
+{% endif %} -->
 
 <!-- Nearest Service Center Finder (ML Model) -->
-<div class="dashboard-header">
+<!-- <div class="dashboard-header">
     <h3>Find Nearest Service Center to Customers (ML Model)</h3>
 </div>
 
@@ -242,9 +271,9 @@
 
         <input type="submit" value="Find Nearest Service Center">
     </form>
-</div>
+</div> -->
 
-{% if ml_results %}
+<!-- {% if ml_results %}
 <div class="results-container">
     <h3>Nearest Service Centers (ML Model)</h3>
     <table>
@@ -276,6 +305,59 @@
 </div>
 {% else %}
     <p>No ML results to display.</p>
+{% endif %} -->
+
+<!-- Nearest Service Center Finder (Hybrid) -->
+<div class="dashboard-header">
+    <h3>Find Nearest Service Center to Customers (Hybrid)</h3>
+</div>
+
+<div class="form-container">
+    <form action="/find_nearest_service_center_hybrid" method="POST" enctype="multipart/form-data">
+        <label for="hybrid_customer_file">Upload Customer Data (with lat/lon):</label>
+        <input type="file" name="hybrid_customer_file" id="hybrid_customer_file" required>
+
+        <label for="hybrid_service_center_file">Upload Service Center Data (with lat/lon):</label>
+        <input type="file" name="hybrid_service_center_file" id="hybrid_service_center_file" required>
+
+        <input type="submit" value="Find Nearest Service Center (Hybrid)">
+    </form>
+</div>
+
+{% if hybrid_results %}
+<div class="results-container">
+    <h3>Nearest Service Centers</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Customer Address</th>
+                <th>Customer Latitude</th>
+                <th>Customer Longitude</th>
+                <th>Nearest Service Center Address</th>
+                <th>Nearest Service Center Latitude</th>
+                <th>Nearest Service Center Longitude</th>
+                <th>Final Distance (km)</th>
+                <th>Method Used</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in hybrid_results %}
+                <tr>
+                    <td>{{ result.customer_address }}</td>
+                    <td>{{ result.customer_latitude }}</td>
+                    <td>{{ result.customer_longitude }}</td>
+                    <td>{{ result.nearest_service_center_address }}</td>
+                    <td>{{ result.nearest_service_center_latitude }}</td>
+                    <td>{{ result.nearest_service_center_longitude }}</td>
+                    <td>{{ (result.final_distance) | round(2) }}</td>
+                    <td>{{ result.source }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <p>No hybrid results to display yet.</p>
 {% endif %}
 
 </body>

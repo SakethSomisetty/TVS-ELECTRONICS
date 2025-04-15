@@ -6,6 +6,10 @@ from scipy.optimize import dual_annealing
 import pickle
 import os
 from werkzeug.utils import secure_filename
+from flask import send_file
+import io
+from datetime import datetime
+
 
 app = Flask(__name__)
 
@@ -89,6 +93,51 @@ def evaluate(new_service_center, customers_df, service_centers_df):
         total_distance += min(new_distance, existing_min_distance)
     return total_distance
 
+def generate_plot(customers_df, service_centers_df, optimal_new_center):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    # Combine existing and new service centers
+    all_centers = service_centers_df[['latitude', 'longitude']].values.tolist()
+    all_centers.append(optimal_new_center.tolist())
+
+    # Calculate distance from each customer to all centers
+    distance_matrix = []
+    for _, row in customers_df.iterrows():
+        cust_lat, cust_lon = row['latitude'], row['longitude']
+        distances = [ml_model(sc_lat, sc_lon, cust_lat, cust_lon) for sc_lat, sc_lon in all_centers]
+        distance_matrix.append(distances)
+
+    distance_matrix = np.array(distance_matrix)
+    nearest_indices = np.argmin(distance_matrix, axis=1)  # Index of nearest service center
+
+    # Use updated colormap API
+    color_palette = plt.colormaps.get_cmap('tab10')
+    customer_colors = [color_palette(idx % 10) for idx in nearest_indices]
+
+    # Plotting
+    plt.figure(figsize=(10, 8))
+    plt.scatter(customers_df['longitude'], customers_df['latitude'], color=customer_colors, s=40, alpha=0.7)
+
+    for i, center in enumerate(all_centers):
+        plt.scatter(center[1], center[0], color=color_palette(i), marker='X', edgecolor='black', s=200,
+                    label=f'Service Center {i+1}' if i < len(all_centers)-1 else 'New Optimal Center')
+
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.title('Customers and Service Centers (including new optimized center)')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    
+    os.makedirs('static', exist_ok=True)
+    plot_filename = 'service_center_plot.png'
+    plot_path = os.path.join('static', plot_filename)
+    plt.savefig(plot_path)
+    plt.close()
+    return plot_filename
+
 # Route for home page
 @app.route('/')
 def home():
@@ -128,13 +177,45 @@ def upload_file():
     num_benefited = len(customers_df[customers_df.apply(
         lambda row: ml_model(optimal_new_center[0], optimal_new_center[1], row['latitude'], row['longitude']) < row['minimum'], axis=1)])
 
+    # Total number of customers
+    total_customers = len(customers_df)
+
+    # Generate the plot and get the path
+    plot_filename = generate_plot(customers_df, service_centers_df, optimal_new_center)
+
+    # ✅ Create downloadable Excel with existing + new service center
+    existing_centers = service_centers_df.copy()
+    existing_centers['type'] = 'existing'
+
+    new_center = pd.DataFrame([{
+        'latitude': optimal_new_center[0],
+        'longitude': optimal_new_center[1],
+        'type': 'new'
+    }])
+
+    combined_centers = pd.concat([existing_centers, new_center], ignore_index=True)
+
+    # Save to file
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        combined_centers.to_excel(writer, sheet_name='Service_Centers', index=False)
+    output.seek(0)
+
+    download_filename = f"combined_service_centers.xlsx"
+    download_path = os.path.join('static', download_filename)
+    with open(download_path, 'wb') as f:
+        f.write(output.read())
+
     # Render the results on the same page
     return render_template('index.html',
                            optimal_latitude=optimal_new_center[0],
                            optimal_longitude=optimal_new_center[1],
                            total_distance_after=result.fun,
                            total_distance_before=total_existing_distance,
-                           num_beneficial_customers=num_benefited)
+                           total_customers_new=total_customers,
+                           num_beneficial_customers=num_benefited,
+                           plot_filename=plot_filename,
+                           download_link=download_filename)
 
 # Route to handle file upload and optimization using custom bounds
 @app.route('/upload_custom_bounds', methods=['POST'])
@@ -172,13 +253,47 @@ def upload_custom_bounds():
     num_benefited = len(customers_df[customers_df.apply(
         lambda row: ml_model(optimal_new_center[0], optimal_new_center[1], row['latitude'], row['longitude']) < row['minimum'], axis=1)])
 
+    # Total number of customers
+    total_customers1 = len(customers_df)
+
+    # Generate and save plot
+    plot_filename = generate_plot(customers_df, service_centers_df, optimal_new_center)
+
+    # ✅ Create downloadable Excel with existing + new service center
+    existing_centers1 = service_centers_df.copy()
+    existing_centers1['type'] = 'existing'
+
+    new_center1 = pd.DataFrame([{
+        'latitude': optimal_new_center[0],
+        'longitude': optimal_new_center[1],
+        'type': 'new'
+    }])
+
+    combined_centers1 = pd.concat([existing_centers1, new_center1], ignore_index=True)
+
+    # Save to Excel in memory
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        combined_centers1.to_excel(writer, sheet_name='Service_Centers', index=False)
+    output.seek(0)
+
+    # Save to file in static folder
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    manual_download_filename = f"custom_bounds_centers_{timestamp}.xlsx"
+    manual_download_path = os.path.join('static', manual_download_filename)
+    with open(manual_download_path, 'wb') as f:
+        f.write(output.read())
+
     # Render the results on the same page
     return render_template('index.html',
                            manual_optimal_latitude=optimal_new_center[0],
                            manual_optimal_longitude=optimal_new_center[1],
                            manual_total_distance_after=result.fun,
                            manual_total_distance_before=total_existing_distance,
-                           manual_beneficial_customers=num_benefited)
+                           total_customers_new1=total_customers1,
+                           manual_beneficial_customers=num_benefited,
+                           manual_plot_filename=plot_filename,
+                           manual_download_link=manual_download_filename)
 
 # Route to calculate distance before/after and number of customers benefitted for manually input lat/lon
 @app.route('/calculate_distance', methods=['POST'])
@@ -216,13 +331,21 @@ def calculate_distance():
     num_benefited = len(customers_df[customers_df.apply(
         lambda row: ml_model(new_lat, new_lon, row['latitude'], row['longitude']) < row['minimum'], axis=1)])
 
+    # Total number of customers
+    total_customers2 = len(customers_df)
+
+    # Generate and save plot
+    plot_filename = generate_plot(customers_df, service_centers_df, np.array([new_lat, new_lon]))
+
     # Render the results on the same page
     return render_template('index.html',
                            new_latitude=new_lat,
                            new_longitude=new_lon,
                            total_distance_after_new=total_new_distance,
                            total_distance_before_new=total_existing_distance,
-                           num_beneficial_customers_new=num_benefited)
+                           total_customers_new2=total_customers2,
+                           num_beneficial_customers_new=num_benefited,
+                           new_plot_filename=plot_filename)
 
 global_results = []  # Store results globally
 
@@ -430,6 +553,109 @@ def find_nearest_center_ml():
         })
     
     return render_template('index.html', ml_results=ml_service_center_results)
+
+@app.route('/find_nearest_service_center_hybrid', methods=['POST'])
+def find_nearest_service_center_hybrid():
+    # Upload files
+    hybrid_customer_file = request.files['hybrid_customer_file']
+    hybrid_service_center_file = request.files['hybrid_service_center_file']
+
+    # Save files
+    cust_path = os.path.join(UPLOAD_FOLDER, secure_filename(hybrid_customer_file.filename))
+    sc_path = os.path.join(UPLOAD_FOLDER, secure_filename(hybrid_service_center_file.filename))
+    hybrid_customer_file.save(cust_path)
+    hybrid_service_center_file.save(sc_path)
+
+    # Load data
+    customer_df = pd.read_excel(cust_path)
+    service_center_df = pd.read_excel(sc_path)
+
+    # Extract data
+    customer_addresses = customer_df['addresses'].tolist()
+    cust_lats = customer_df['latitude'].tolist()
+    cust_lons = customer_df['longitude'].tolist()
+
+    sc_addresses = service_center_df['addresses'].tolist()
+    sc_lats = service_center_df['latitude'].tolist()
+    sc_lons = service_center_df['longitude'].tolist()
+
+    ml_results = []
+    api_input = []
+
+    # Step 1: Run ML predictions and split
+    for i, (cust_lat, cust_lon) in enumerate(zip(cust_lats, cust_lons)):
+        min_distance = float('inf')
+        nearest_idx = -1
+
+        for j, (sc_lat, sc_lon) in enumerate(zip(sc_lats, sc_lons)):
+            dist = ml_model(cust_lat, cust_lon, sc_lat, sc_lon)
+            if dist < min_distance:
+                min_distance = dist
+                nearest_idx = j
+
+        if min_distance <= 100:
+            ml_results.append({
+                'customer_address': customer_addresses[i],
+                'customer_latitude': cust_lat,
+                'customer_longitude': cust_lon,
+                'nearest_service_center_address': sc_addresses[nearest_idx],
+                'nearest_service_center_latitude': sc_lats[nearest_idx],
+                'nearest_service_center_longitude': sc_lons[nearest_idx],
+                'final_distance': min_distance,
+                'source': 'ML'
+            })
+        else:
+            # Push for API processing
+            api_input.append({
+                'address': customer_addresses[i],
+                'latitude': cust_lat,
+                'longitude': cust_lon
+            })
+
+    # Step 2: Run API logic for customers >50km
+    api_results = []
+    if api_input:
+        # Prepare files
+        api_customer_df = pd.DataFrame(api_input)
+        api_customer_df['addresses'] = api_customer_df['address']
+
+        # Save temp Excel files
+        api_cust_excel = 'temp_api_cust.xlsx'
+        api_customer_df.to_excel(api_cust_excel, index=False)
+        service_center_df.to_excel('temp_api_sc.xlsx', index=False)
+
+        # Reuse original API logic
+        access_token = get_access_token(CLIENT_ID, CLIENT_SECRET)
+        sc_eloc, _ = get_eloc(sc_addresses, access_token)
+        cust_eloc, _ = get_eloc(api_customer_df['addresses'].tolist(), access_token)
+
+        distance_matrix = get_distance_and_time(access_token, sc_eloc, cust_eloc)
+        nearest_centers = find_nearest_service_center(distance_matrix, len(cust_eloc), len(sc_eloc))
+
+        for idx, entry in enumerate(api_input):
+            nearest_idx, distance = nearest_centers[idx]
+            api_results.append({
+                'customer_address': entry['address'],
+                'customer_latitude': entry['latitude'],
+                'customer_longitude': entry['longitude'],
+                'nearest_service_center_address': sc_addresses[nearest_idx],
+                'nearest_service_center_latitude': sc_lats[nearest_idx],
+                'nearest_service_center_longitude': sc_lons[nearest_idx],
+                'final_distance': distance/1000,
+                'source': 'API'
+            })
+
+    # Step 3: Combine ML + API results
+    combined_results = ml_results + api_results
+
+    # Step 4: Sort results to match original customer file order
+    address_order = customer_df[['addresses', 'latitude', 'longitude']]
+    final_df = pd.DataFrame(combined_results)
+    merged_df = address_order.merge(final_df, left_on=['addresses', 'latitude', 'longitude'],
+                                    right_on=['customer_address', 'customer_latitude', 'customer_longitude'],
+                                    how='left')
+
+    return render_template("index.html", hybrid_results=merged_df.to_dict(orient='records'))
 
 
 # Main entry point
