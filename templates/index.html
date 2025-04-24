@@ -63,8 +63,64 @@
 </head>
 <body>
 
+<!-- Nearest Service Center Finder (Hybrid) -->
 <div class="dashboard-header">
     <h1>TVS Electronics Dashboard</h1>
+    <h3>Find Nearest Service Center to Customers</h3>
+</div>
+
+<div class="form-container">
+    <form action="/find_nearest_service_center_hybrid" method="POST" enctype="multipart/form-data">
+        <label for="hybrid_customer_file">Upload Customer Data (with lat/lon):</label>
+        <input type="file" name="hybrid_customer_file" id="hybrid_customer_file" required>
+
+        <label for="hybrid_service_center_file">Upload Service Center Data (with lat/lon):</label>
+        <input type="file" name="hybrid_service_center_file" id="hybrid_service_center_file" required>
+
+        <input type="submit" value="Find Nearest Service Center">
+    </form>
+</div>
+
+{% if hybrid_results %}
+<div class="results-container">
+    <h3>Nearest Service Centers</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Customer Address</th>
+                <th>Customer Latitude</th>
+                <th>Customer Longitude</th>
+                <th>Nearest Service Center Address</th>
+                <th>Nearest Service Center Latitude</th>
+                <th>Nearest Service Center Longitude</th>
+                <th>Final Distance (km)</th>
+                <th>Method Used</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in hybrid_results %}
+                <tr>
+                    <td>{{ result.customer_address }}</td>
+                    <td>{{ (result.customer_latitude) | round(2) }}</td>
+                    <td>{{ (result.customer_longitude) | round(2) }}</td>
+                    <td>{{ result.nearest_service_center_address }}</td>
+                    <td>{{ (result.nearest_service_center_latitude) | round(2) }}</td>
+                    <td>{{ (result.nearest_service_center_longitude) | round(2) }}</td>
+                    <td>{{ (result.final_distance) | round(2) }}</td>
+                    <td>{{ result.source }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <p>No hybrid results to display yet.</p>
+{% endif %}
+
+</body>
+</html>
+
+<div class="dashboard-header">
     <h3>Optimal Service Center Location Finder</h3>
 </div>
 
@@ -308,8 +364,8 @@
 {% endif %} -->
 
 <!-- Nearest Service Center Finder (Hybrid) -->
-<div class="dashboard-header">
-    <h3>Find Nearest Service Center to Customers (Hybrid)</h3>
+<!-- <div class="dashboard-header">
+    <h3>Find Nearest Service Center to Customers</h3>
 </div>
 
 <div class="form-container">
@@ -320,7 +376,7 @@
         <label for="hybrid_service_center_file">Upload Service Center Data (with lat/lon):</label>
         <input type="file" name="hybrid_service_center_file" id="hybrid_service_center_file" required>
 
-        <input type="submit" value="Find Nearest Service Center (Hybrid)">
+        <input type="submit" value="Find Nearest Service Center">
     </form>
 </div>
 
@@ -361,4 +417,4 @@
 {% endif %}
 
 </body>
-</html>
+</html> -->
