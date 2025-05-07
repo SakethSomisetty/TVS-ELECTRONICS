@@ -69,6 +69,7 @@
     <h3>Find Nearest Service Center to Customers</h3>
 </div>
 
+<!-- Upload Form -->
 <div class="form-container">
     <form action="/find_nearest_service_center_hybrid" method="POST" enctype="multipart/form-data">
         <label for="hybrid_customer_file">Upload Customer Data (with lat/lon):</label>
@@ -77,10 +78,20 @@
         <label for="hybrid_service_center_file">Upload Service Center Data (with lat/lon):</label>
         <input type="file" name="hybrid_service_center_file" id="hybrid_service_center_file" required>
 
+        <label for="ml_threshold">ML Distance Threshold (in km):</label>
+        <p class="description">
+            This value determines which method will be used to find the nearest service center.<br>
+            If the predicted distance using the ML model is <strong>less than or equal to</strong> this threshold, the ML prediction is used.<br>
+            Otherwise, the result is calculated using the live API.<br>
+            (Note: keep threshold to 0 if you want to use API for every point, keep threshold to 9999 if you want to use ML model for every point)
+        </p>
+        <input type="number" name="ml_threshold" id="ml_threshold" placeholder="e.g., 100" required>
+
         <input type="submit" value="Find Nearest Service Center">
     </form>
 </div>
 
+<!-- Results Section -->
 {% if hybrid_results %}
 <div class="results-container">
     <h3>Nearest Service Centers</h3>
@@ -90,6 +101,7 @@
                 <th>Customer Address</th>
                 <th>Customer Latitude</th>
                 <th>Customer Longitude</th>
+                <th>Nearest Service Center Name</th>
                 <th>Nearest Service Center Address</th>
                 <th>Nearest Service Center Latitude</th>
                 <th>Nearest Service Center Longitude</th>
@@ -101,12 +113,13 @@
             {% for result in hybrid_results %}
                 <tr>
                     <td>{{ result.customer_address }}</td>
-                    <td>{{ (result.customer_latitude) | round(2) }}</td>
-                    <td>{{ (result.customer_longitude) | round(2) }}</td>
+                    <td>{{ result.customer_latitude | round(2) }}</td>
+                    <td>{{ result.customer_longitude | round(2) }}</td>
+                    <td>{{ result.nearest_service_center_name }}</td>
                     <td>{{ result.nearest_service_center_address }}</td>
-                    <td>{{ (result.nearest_service_center_latitude) | round(2) }}</td>
-                    <td>{{ (result.nearest_service_center_longitude) | round(2) }}</td>
-                    <td>{{ (result.final_distance) | round(2) }}</td>
+                    <td>{{ result.nearest_service_center_latitude | round(2) }}</td>
+                    <td>{{ result.nearest_service_center_longitude | round(2) }}</td>
+                    <td>{{ result.final_distance | round(2) }}</td>
                     <td>{{ result.source }}</td>
                 </tr>
             {% endfor %}
@@ -114,7 +127,7 @@
     </table>
 </div>
 {% else %}
-    <p>No hybrid results to display yet.</p>
+    <p style="text-align: center;">No hybrid results to display yet.</p>
 {% endif %}
 
 </body>
@@ -148,9 +161,14 @@
     <p>Number of Customers Benefited: {{ num_beneficial_customers }}</p>
 </div>
 <!-- Add this to display the generated plot -->
-<div class="plot-container">
+<!-- <div class="plot-container">
     <h3>Service Center Allocation Map</h3>
     <img src="{{ url_for('static', filename=plot_filename) }}" alt="Plot of Service Centers" style="max-width: 100%; border: 1px solid #ccc;">
+</div> -->
+<!-- Add this to display the generated interactive map -->
+<div class="plot-container">
+    <h3>Service Center Allocation Map (Interactive)</h3>
+    <iframe src="{{ url_for('static', filename=plot_filename) }}" width="100%" height="600px" style="border: 1px solid #ccc;"></iframe>
 </div>
 <!-- ✅ Download Button -->
 {% if download_link %}
@@ -200,9 +218,13 @@
     <p>Number of Customers Benefited: {{ manual_beneficial_customers }}</p>
 </div>
 
-<div class="plot-container">
+<!-- <div class="plot-container">
     <h3>Service Center Allocation Map (Custom Bounds)</h3>
     <img src="{{ url_for('static', filename=manual_plot_filename) }}" alt="Plot of Custom Optimized Center">
+</div> -->
+<div class="plot-container">
+    <h3>Service Center Allocation Map (Interactive)</h3>
+    <iframe src="{{ url_for('static', filename=manual_plot_filename) }}" width="100%" height="600px" style="border: 1px solid #ccc;"></iframe>
 </div>
 <!-- ✅ Download Button -->
 {% if manual_download_link %}
@@ -245,9 +267,13 @@
     <p>Total number of customers: {{ total_customers_new2 }}</p>
     <p>Number of Customers Benefited: {{ num_beneficial_customers_new }}</p>
 </div>
-<div class="plot-container">
+<!-- <div class="plot-container">
     <h3>Service Center Allocation Map (Manual Entry)</h3>
     <img src="{{ url_for('static', filename=new_plot_filename) }}" alt="Plot for Manual Entry">
+</div> -->
+<div class="plot-container">
+    <h3>Service Center Allocation Map (Interactive)</h3>
+    <iframe src="{{ url_for('static', filename=new_plot_filename) }}" width="100%" height="600px" style="border: 1px solid #ccc;"></iframe>
 </div>
 {% endif %}
 
