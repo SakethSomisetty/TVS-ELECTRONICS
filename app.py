@@ -22,15 +22,6 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# def ml_model(lat1, lon1, lat2, lon2):
-#     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
-#     dlat = lat2 - lat1
-#     dlon = lon2 - lon1
-#     a = np.sin(dlat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2)**2
-#     c = 2 * np.arcsin(np.sqrt(a))
-#     r = 6371  # Earth radius in kilometers
-#     return c * r
-
 def ml_model(lat1, lon1, lat2, lon2):
     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
@@ -54,15 +45,21 @@ def apply_correction(distance):
     elif 5 < distance <= 10:
         correction_factor = 0.15
     elif 10 < distance <= 20:
-        correction_factor = 0.18
-    else:
+        correction_factor = 0.17
+    elif 20 < distance <= 75:
+        correction_factor = 0.16
+    elif 75 < distance <= 110:
         correction_factor = 0.20
+    elif 110 < distance <= 170:
+        correction_factor = 0.16  
+    elif 170 < distance <= 210:
+        correction_factor = 0.20
+    elif 210 < distance <= 260:
+        correction_factor = 0.25
+    else:
+        correction_factor = 0.30
     corrected_distance = distance * (1 + correction_factor)
     return corrected_distance
-
-# Load the ML model (Haversine function) from the pickle file
-# with open('ML_model.pkl', 'rb') as file:
-#     ml_model = pickle.load(file)
 
 # Objective function for dual annealing
 def evaluate(new_service_center, customers_df, service_centers_df):
@@ -75,129 +72,22 @@ def evaluate(new_service_center, customers_df, service_centers_df):
         total_distance += min(new_distance, existing_min_distance)
     return total_distance
 
-# def generate_plot(customers_df, service_centers_df, optimal_new_center):
-#     import matplotlib
-#     matplotlib.use('Agg')
-#     import matplotlib.pyplot as plt
-
-#     # Combine existing and new service centers
-#     all_centers = service_centers_df[['latitude', 'longitude']].values.tolist()
-#     all_centers.append(optimal_new_center.tolist())
-
-#     # Calculate distance from each customer to all centers
-#     distance_matrix = []
-#     for _, row in customers_df.iterrows():
-#         cust_lat, cust_lon = row['latitude'], row['longitude']
-#         distances = [ml_model(sc_lat, sc_lon, cust_lat, cust_lon) for sc_lat, sc_lon in all_centers]
-#         distance_matrix.append(distances)
-
-#     distance_matrix = np.array(distance_matrix)
-#     nearest_indices = np.argmin(distance_matrix, axis=1)  # Index of nearest service center
-
-#     # Use updated colormap API
-#     color_palette = plt.colormaps.get_cmap('tab10')
-#     customer_colors = [color_palette(idx % 10) for idx in nearest_indices]
-
-#     # Plotting
-#     plt.figure(figsize=(10, 8))
-#     plt.scatter(customers_df['longitude'], customers_df['latitude'], color=customer_colors, s=40, alpha=0.7)
-
-#     for i, center in enumerate(all_centers):
-#         plt.scatter(center[1], center[0], color=color_palette(i), marker='X', edgecolor='black', s=200,
-#                     label=f'Service Center {i+1}' if i < len(all_centers)-1 else 'New Optimal Center')
-
-#     plt.xlabel('Longitude')
-#     plt.ylabel('Latitude')
-#     plt.title('Customers and Service Centers (including new optimized center)')
-#     plt.legend()
-#     plt.grid(True)
-#     plt.tight_layout()
-    
-#     os.makedirs('static', exist_ok=True)
-#     plot_filename = 'service_center_plot.png'
-#     plot_path = os.path.join('static', plot_filename)
-#     plt.savefig(plot_path)
-#     plt.close()
-#     return plot_filename
-
-# def generate_plot(customers_df, service_centers_df, optimal_new_center):
-#     import folium
-#     import os
-
-#     # Combine existing and new service centers
-#     all_centers = service_centers_df[['latitude', 'longitude']].values.tolist()
-#     all_centers.append(optimal_new_center.tolist())
-
-#     # Calculate map bounds based on all coordinates
-#     all_lats = list(customers_df['latitude']) + [lat for lat, _ in all_centers]
-#     all_lngs = list(customers_df['longitude']) + [lng for _, lng in all_centers]
-
-#     min_lat, max_lat = min(all_lats), max(all_lats)
-#     min_lng, max_lng = min(all_lngs), max(all_lngs)
-
-#     center_lat = (min_lat + max_lat) / 2
-#     center_lng = (min_lng + max_lng) / 2
-
-#     # Create folium map
-#     city_map = folium.Map(location=[center_lat, center_lng], zoom_start=12, tiles='OpenStreetMap')
-
-#     # Add customer points
-#     for idx, row in customers_df.iterrows():
-#         folium.CircleMarker(
-#             location=[row['latitude'], row['longitude']],
-#             radius=3,
-#             color='blue',
-#             fill=True,
-#             fill_opacity=0.7,
-#             popup=f"Customer {idx+1}"
-#         ).add_to(city_map)
-
-#     # Add service centers
-#     for i, center in enumerate(all_centers[:-1]):
-#         folium.Marker(
-#             location=center,
-#             popup=f"Service Center {i+1}",
-#             icon=folium.Icon(color='green', icon='building')
-#         ).add_to(city_map)
-
-#     # Add optimal new center
-#     folium.Marker(
-#         location=optimal_new_center,
-#         popup='New Optimal Center',
-#         icon=folium.Icon(color='red', icon='star')
-#     ).add_to(city_map)
-
-#     # Add bounding rectangle
-#     folium.Rectangle(
-#         bounds=[(min_lat, min_lng), (max_lat, max_lng)],
-#         color='black',
-#         fill=True,
-#         fill_opacity=0.05
-#     ).add_to(city_map)
-
-#     # Save the map
-#     os.makedirs('static', exist_ok=True)
-#     plot_filename = 'service_center_map.html'
-#     plot_path = os.path.join('static', plot_filename)
-#     city_map.save(plot_path)
-
-#     return plot_filename
 
 def generate_plot(customers_df, service_centers_df, optimal_new_center):
     import folium
     import os
+    from folium.plugins import FloatImage
+    from branca.element import Template, MacroElement
 
     # Combine existing and new service centers
     all_centers = service_centers_df[['latitude', 'longitude']].values.tolist()
     all_centers.append(optimal_new_center.tolist())
 
-    # Calculate map bounds based on all coordinates
+    # Calculate map bounds
     all_lats = list(customers_df['latitude']) + [lat for lat, _ in all_centers]
     all_lngs = list(customers_df['longitude']) + [lng for _, lng in all_centers]
-
     min_lat, max_lat = min(all_lats), max(all_lats)
     min_lng, max_lng = min(all_lngs), max(all_lngs)
-
     center_lat = (min_lat + max_lat) / 2
     center_lng = (min_lng + max_lng) / 2
 
@@ -220,7 +110,7 @@ def generate_plot(customers_df, service_centers_df, optimal_new_center):
             popup=f"Customer {idx+1}"
         ).add_to(city_map)
 
-    # Add service centers
+    # Add existing service centers
     for i, center in enumerate(all_centers[:-1]):
         folium.Marker(
             location=center,
@@ -243,6 +133,28 @@ def generate_plot(customers_df, service_centers_df, optimal_new_center):
         fill_opacity=0.05
     ).add_to(city_map)
 
+    # Add legend (custom HTML)
+    legend_html = """
+    {% macro html(this, kwargs) %}
+    <div style="
+        position: fixed; 
+        bottom: 50px; left: 50px; width: 220px; height: 160px; 
+        border:2px solid grey; z-index:9999; font-size:14px;
+        background-color:white; padding: 10px; opacity: 0.9;
+    ">
+    <b>Legend</b><br>
+    <i class="fa fa-map-marker fa-2x" style="color:green"></i> Existing Service Center<br>
+    <i class="fa fa-star fa-2x" style="color:red"></i> New Optimal Center<br>
+    <span style="color:orange;">●</span> Customer benefiting from new center<br>
+    <span style="color:blue;">●</span> Other Customer<br>
+    </div>
+    {% endmacro %}
+    """
+
+    legend = MacroElement()
+    legend._template = Template(legend_html)
+    city_map.get_root().add_child(legend)
+
     # Save the map
     os.makedirs('static', exist_ok=True)
     plot_filename = 'service_center_map.html'
@@ -250,6 +162,7 @@ def generate_plot(customers_df, service_centers_df, optimal_new_center):
     city_map.save(plot_path)
 
     return plot_filename
+
 
 
 
@@ -462,7 +375,7 @@ def calculate_distance():
                            num_beneficial_customers_new=num_benefited,
                            new_plot_filename=plot_filename)
 
-global_results = []  # Store results globally
+# global_results = []  # Store results globally
 
 # Route to calculate the nearest service centers using Mappls API
 @app.route('/find_nearest_service_center', methods=['POST'])
@@ -504,47 +417,8 @@ def calculate_nearest_centers():
             'nearest_service_center_address': nearest_service_center_address,
             'distance': nearest_distance
         })
-    
-    # global_results = results  # Store results globally
-    global global_results  
-    global_results.clear()  # Clear old results before adding new ones
-    global_results.extend(results)  # Update with new results
 
     return render_template('index.html', results=results)
-
-@app.route('/download-results')
-def download_results():
-    global global_results
-    if not global_results:
-        return "No results available for download", 400
-    
-    # Convert results to DataFrame
-    df = pd.DataFrame(global_results)
-
-    # Rename columns for better readability
-    df = df.rename(columns={
-        "customer_address": "Customer Address",
-        "customer_eloc": "Customer eLoc",
-        "nearest_service_center_eloc": "Nearest Service Center eLoc",
-        "nearest_service_center_address": "Nearest Service Center Address",
-        "distance": "Distance (km)"
-    })
-
-    # Convert distance from meters to kilometers
-    df["Distance (km)"] = df["Distance (km)"] / 1000
-
-    # Convert DataFrame to Excel
-    excel_file = "nearest_service_centers.xlsx"
-    df.to_excel(excel_file, index=False, engine='openpyxl')
-
-    # Read the file and send as response
-    with open(excel_file, "rb") as f:
-        data = f.read()
-
-    response = Response(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response.headers["Content-Disposition"] = f"attachment; filename={excel_file}"
-
-    return response
 
 # Mappls API functions for eLoc retrieval and distance calculation
 def get_eloc(address_list, access_token):
@@ -574,18 +448,6 @@ def get_access_token(client_id, client_secret):
     response = requests.post(url, params=params)
     token_data = response.json()
     return token_data.get('access_token')
-
-# def get_distance_and_time(access_token, sp_eloc, cust_eloc):
-#     eloc_string = ";".join(sp_eloc + cust_eloc)
-#     service_center_count = len(sp_eloc)
-#     sources_param = ";".join([str(i) for i in range(service_center_count)])
-#     dest_param = ";".join([str(i) for i in range(service_center_count, len(sp_eloc) + len(cust_eloc))])
-    
-#     url = f"https://atlas.mappls.com/api/directions/v1/route"
-#     headers = {'Authorization': f'bearer {access_token}'}
-#     params = {'sources': sources_param, 'destinations': dest_param}
-#     response = requests.get(url, headers=headers, params=params)
-#     return response.json()
 
 def get_distance_and_time(access_token, sp_eloc,cust_eloc):
     res=""
@@ -676,7 +538,11 @@ def find_nearest_service_center_hybrid():
     hybrid_service_center_file = request.files['hybrid_service_center_file']
     
     # Get threshold from form
-    ml_threshold = float(request.form.get("ml_threshold", 100))  # default is 100 if not provided
+    # ml_threshold = float(request.form.get("ml_threshold", 100))  # default is 100 if not provided
+    ml_threshold_raw = request.form.get("ml_threshold", "").strip()
+    ml_threshold = float(ml_threshold_raw) if ml_threshold_raw else 100.0
+    
+
 
     # Save files
     cust_path = os.path.join(UPLOAD_FOLDER, secure_filename(hybrid_customer_file.filename))
@@ -771,10 +637,21 @@ def find_nearest_service_center_hybrid():
     merged_df = address_order.merge(final_df, left_on=['addresses', 'latitude', 'longitude'],
                                     right_on=['customer_address', 'customer_latitude', 'customer_longitude'],
                                     how='left')
+    # ✅ Step 5: Save results to downloadable Excel
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        merged_df.to_excel(writer, sheet_name='Hybrid_Results', index=False)
+    output.seek(0)
 
-    return render_template("index.html", hybrid_results=merged_df.to_dict(orient='records'))
+    hybrid_download_filename = f"hybrid_results.xlsx"
+    hybrid_download_path = os.path.join('static', hybrid_download_filename)
+    with open(hybrid_download_path, 'wb') as f:
+        f.write(output.read())
 
+    return render_template("index.html",
+                           hybrid_results=merged_df.to_dict(orient='records'),
+                           hybrid_download_link=hybrid_download_filename)
 
 # Main entry point
 if __name__ == '__main__':
-    app.run(debug=True,port=3001)
+    app.run(debug=True,port=3002)

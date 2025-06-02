@@ -85,7 +85,7 @@
             Otherwise, the result is calculated using the live API.<br>
             (Note: keep threshold to 0 if you want to use API for every point, keep threshold to 9999 if you want to use ML model for every point)
         </p>
-        <input type="number" name="ml_threshold" id="ml_threshold" placeholder="e.g., 100" required>
+        <input type="number" name="ml_threshold" id="ml_threshold" placeholder="e.g., 100">
 
         <input type="submit" value="Find Nearest Service Center">
     </form>
@@ -126,6 +126,12 @@
         </tbody>
     </table>
 </div>
+<!-- ✅ Download Button for Hybrid -->
+{% if hybrid_download_link %}
+<div class="download-container">
+    <a href="{{ url_for('static', filename=hybrid_download_link) }}" download>📥 Download Nearest Center Assignment File</a>
+</div>
+{% endif %}
 {% else %}
     <p style="text-align: center;">No hybrid results to display yet.</p>
 {% endif %}
@@ -160,11 +166,6 @@
     <p>Total number of customers: {{ total_customers_new }}</p>
     <p>Number of Customers Benefited: {{ num_beneficial_customers }}</p>
 </div>
-<!-- Add this to display the generated plot -->
-<!-- <div class="plot-container">
-    <h3>Service Center Allocation Map</h3>
-    <img src="{{ url_for('static', filename=plot_filename) }}" alt="Plot of Service Centers" style="max-width: 100%; border: 1px solid #ccc;">
-</div> -->
 <!-- Add this to display the generated interactive map -->
 <div class="plot-container">
     <h3>Service Center Allocation Map (Interactive)</h3>
